@@ -3,6 +3,7 @@ package com.example.registropeliculas
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -24,11 +25,26 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.lifecycle.ViewModel
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.key
+import kotlinx.coroutines.delay
 import com.example.registropeliculas.ui.theme.RegistroPeliculasTheme
 
 // clase que representa una pelicula
@@ -85,6 +101,16 @@ fun PantallaPrincipal(peliculasViewModel: PeliculasViewModel = viewModel()) {
             .padding(16.dp)
             .verticalScroll(rememberScrollState())
     ) {
+        Image(
+            painter = painterResource(R.drawable.banner_peliculas), // ajustá el nombre
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp)
+                .clip(RoundedCornerShape(12.dp))
+        )
+        Spacer(modifier = Modifier.height(16.dp))
         FormularioPancracio(alAgregar = { peliculasViewModel.agregarPelicula(it) })
         Spacer(modifier = Modifier.height(16.dp))
         Divider()
@@ -128,7 +154,7 @@ fun FormularioPancracio(alAgregar: (Pelicula) -> Unit) {
 
             OutlinedTextField(
                 value = anho, onValueChange = { anho = it },
-                label = { Text("Anho de lanzamiento") },
+                label = { Text("Año de lanzamiento") },
                 leadingIcon = { Icon(Icons.Filled.DateRange, contentDescription = null) },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -136,7 +162,7 @@ fun FormularioPancracio(alAgregar: (Pelicula) -> Unit) {
 
             OutlinedTextField(
                 value = genero, onValueChange = { genero = it },
-                label = { Text("Genero") },
+                label = { Text("Género") },
                 leadingIcon = { Icon(Icons.Filled.Info, contentDescription = null) },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -144,7 +170,7 @@ fun FormularioPancracio(alAgregar: (Pelicula) -> Unit) {
 
             OutlinedTextField(
                 value = duracion, onValueChange = { duracion = it },
-                label = { Text("Duracion (min)") },
+                label = { Text("Duración (min)") },
                 leadingIcon = { Icon(Icons.Filled.Timer, contentDescription = null) },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -168,43 +194,78 @@ fun FormularioPancracio(alAgregar: (Pelicula) -> Unit) {
 
 @Composable
 fun ListaDePeliculas(peliculas: List<Pelicula>, alEliminar: (Pelicula) -> Unit) {
-    // lista vertical con LazyColumn
     Column {
         peliculas.forEach { peli ->
-            ItemPelicula(peli, alEliminar)
-            Spacer(modifier = Modifier.height(8.dp))
+            key(peli) {
+                ItemPelicula(peli, alEliminar)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
         }
     }
 }
 
 @Composable
 fun ItemPelicula(peli: Pelicula, alEliminar: (Pelicula) -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            // titulo destacado arriba
-            Text(peli.titulo, style = MaterialTheme.typography.titleLarge)
-            Spacer(modifier = Modifier.height(8.dp))
+    var mostrarDialogo by remember { mutableStateOf(false) }
+    var visible by remember { mutableStateOf(true) }
 
-            // datos restantes en fila horizontal con LazyRow
-            val datosMamon = listOf(
-                "Director: ${peli.director}",
-                "Anho: ${peli.anho}",
-                "Genero: ${peli.genero}",
-                "Duracion: ${peli.duracion} min"
-            )
-            LazyRow {
-                items(datosMamon) { dato ->
-                    AssistChip(onClick = {}, label = { Text(dato) })
-                    Spacer(modifier = Modifier.width(8.dp))
+    AnimatedVisibility(
+        visible = visible,
+        exit = shrinkVertically(animationSpec = tween(500)) + fadeOut(animationSpec = tween(500))
+    ) {
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(peli.titulo, style = MaterialTheme.typography.titleLarge)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val datosMamon = listOf(
+                    "Director: ${peli.director}",
+                    "Anho: ${peli.anho}",
+                    "Genero: ${peli.genero}",
+                    "Duracion: ${peli.duracion} min"
+                )
+                LazyRow {
+                    items(datosMamon) { dato ->
+                        AssistChip(onClick = {}, label = { Text(dato) })
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(onClick = { mostrarDialogo = true }) {
+                    Text("Eliminar")
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // boton para eliminar la pelicula
-            Button(onClick = { alEliminar(peli) }) {
-                Text("Eliminar")
-            }
         }
+    }
+
+    // cuando visible pasa a false
+    LaunchedEffect(visible) {
+        if (!visible) {
+            delay(500)
+            alEliminar(peli)
+        }
+    }
+
+    if (mostrarDialogo) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogo = false },
+            title = { Text("Eliminar pelicula") },
+            text = { Text("¿Seguro que queres eliminar \"${peli.titulo}\"?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    mostrarDialogo = false
+                    visible = false
+                }) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarDialogo = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
